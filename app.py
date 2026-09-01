@@ -69,11 +69,14 @@ import re
 def parse_rate_number(rate_str: str):
     if not rate_str or rate_str == "-" or rate_str == "N/A" or rate_str is None:
         return None
-    s = str(rate_str).strip()
-    rate_strip = s.upper()
+    # 彻底清理：移除所有不可见字符，只保留数字、.、%
+    raw = str(rate_str)
+    # 只保留数字、小数点、百分号
+    cleaned = re.sub(r"[^0-9.%]", "", raw)
+    rate_strip = cleaned.upper()
     if "FREE" in rate_strip or "0.00%" in rate_strip:
         return 0.0
-    all_matches = re.findall(r"([0-9]+\.[0-9]+|[0-9]+)", s)
+    all_matches = re.findall(r"([0-9]+\.[0-9]+|[0-9]+)", cleaned)
     if all_matches:
         last_match = all_matches[-1]
         try:
@@ -118,12 +121,15 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
 
     sec232_rate = None
     sec232_type = ""
-    if sec232_full != "-":
-        sec232_rate, sec232_type = sec232_full.split(" | ",1)
-    sec232_num = parse_rate_number(sec232_rate) if sec232_rate else None
+    sec232_num = None
+    # 读取数据库取出sec232_full务必先strip，消除空格脏数据
+    s232 = sec232_full.strip()
+    if s232 != "-" and s232 != "":
+        sec232_rate, sec232_type = s232.split(" | ",1)
+        sec232_num = parse_rate_number(sec232_rate)
 
     cond1 = False
-    if metal_flag == "是" and sec232_full != "-":
+    if metal_flag.strip() == "是" and s232 != "-" and s232 != "":
         t = sec232_type.upper()
         if "STEEL" in t or "COPPER" in t or "ALUMINUM" in t or "AUTOMOBILE" in t:
             cond1 = True
@@ -132,10 +138,10 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
         use_232 = True
         expr_parts.append(base)
         if b_num is None:
-            return {"expr":" | ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+            return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(b_num)
 
-        if t301 != "-":
+        if t301.strip() != "-":
             expr_parts.append(t301)
             if t301_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
@@ -146,34 +152,50 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
             return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(sec232_num)
 
+        fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
+        if fl_text not in fl_skip_set:
+            expr_parts.append(fl_text)
+            if fl_num is None:
+                return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+            num_list.append(fl_num)
+
     else:
         expr_parts.append(base)
         if b_num is None:
             return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(b_num)
 
-        if t301 != "-":
+        if t301.strip() != "-":
             expr_parts.append(t301)
             if t301_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(t301_num)
 
         fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
-        fl_effective = fl_text not in fl_skip_set
-        if fl_effective:
+        if fl_text not in fl_skip_set:
             expr_parts.append(fl_text)
             if fl_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(fl_num)
 
     expr_str = " + ".join(expr_parts)
-    if len(num_list) >0:
+    if len(num_list) > 0:
         total_val = sum(num_list)
         total_str = f"{total_val:.2f}%"
     else:
         total_str = "(无法计算)"
     return {"expr": expr_str, "total": total_str, "use_232": use_232}
 
+
+# 单元测试
+if __name__ == "__main__":
+    # 模拟301税率50%，带脏字符
+    print(parse_rate_number("50.00%"))
+    res = calc_composite_tariff("7.00%","50.00%","12.5%","-","否")
+    print(res)
+    # 测试100% 301税率
+    res2 = calc_composite_tariff("7.00%","100.00%","12.5%","-","否")
+    print(res2)
 
 # ===================== Excel导出函数（修改为返回二进制字节流） =====================
 def generate_excel(rows, lang="zh") -> bytes:
