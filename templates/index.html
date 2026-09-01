@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>美国进口关税率</title>
+    <style>
+        body {
+            font-family: "Microsoft Yahei", sans-serif;
+            padding: 24px 32px;
+            margin: 0;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 28px;
+            margin: 0;
+        }
+        .lang-switch{
+            flex-shrink: 0;
+        }
+        .lang-switch button {
+            border:1px solid #2b68b8;
+            background:#fff;
+            color:#2b68b8;
+            padding:6px 14px;
+            cursor:pointer;
+            border-radius:4px;
+            margin-left:6px;
+            font-size:15px;
+        }
+        .lang-switch button.active {
+            background:#2b68b8;
+            color:#ffffff;
+        }
+        .search-box {
+            background:#f0f4fa;
+            padding:22px 26px;
+            border-radius:12px;
+            display:flex;
+            gap:20px;
+            align-items:flex-start;
+            flex-wrap:wrap;
+            margin-bottom:22px;
+        }
+        .search-box label{
+            font-size:16px;
+            margin-top:10px;
+            display:flex;
+            align-items:center;
+        }
+        .required-mark{
+            color:#dc2626;
+            margin-left:4px;
+        }
+        .search-box select{
+            font-size:16px;
+            padding:10px 12px;
+            min-width:220px;
+            margin:0;
+            box-sizing:border-box;
+        }
+        #hsTextarea{
+            font-size:16px;
+            padding:10px 12px;
+            min-width:280px;
+            min-height:80px;
+            max-height:220px;
+            box-sizing:border-box;
+            overflow-y:auto;
+            resize:vertical;
+        }
+        .btn-query{
+            background:#2b68b8;
+            color:white;
+            border:none;
+            font-size:18px;
+            padding:11px 34px;
+            border-radius:6px;
+            cursor:pointer;
+            margin-top:10px;
+        }
+        .btn-export{
+            background:#19945c;
+            color:white;
+            border:none;
+            font-size:16px;
+            padding:9px 22px;
+            border-radius:6px;
+            cursor:pointer;
+            margin-bottom:14px;
+        }
+        table{
+            border-collapse: collapse;
+            font-size:13px;
+            width:auto;
+            max-width:100%;
+        }
+        th,td{
+            border:1px solid #aaa;
+            padding:9px 11px;
+            vertical-align:middle;
+        }
+        th{
+            background:#e8f0fc;
+        }
+        th:nth-child(1), td:nth-child(1) { width:130px; }
+        th:nth-child(2), td:nth-child(2) { width:360px; }
+        th:nth-child(3), td:nth-child(3) { width:150px; }
+        th:nth-child(4), td:nth-child(4) { width:180px; }
+        th:nth-child(5), td:nth-child(5) { width:170px; }
+        th:nth-child(6), td:nth-child(6) { width:190px; }
+        th:nth-child(7), td:nth-child(7) { width:240px; }
+        .total-text{
+            color:#c82423;
+            font-weight:bold;
+        }
+    </style>
+</head>
+<body>
+<div class="header-bar">
+    <h1 data-zh="美国进口关税率" data-en="US Import Tariff">美国进口关税率</h1>
+    <div class="lang-switch">
+        <button id="btnZh" class="active">中文</button>
+        <button id="btnEn">English</button>
+    </div>
+</div>
+
+<form method="POST" id="searchForm">
+    <input type="hidden" name="lang_hidden" value="{{lang}}">
+    <div class="search-box">
+        <label data-zh="选择原产国：" data-en="Origin Country:">选择原产国：</label>
+        <select name="sel_origin">
+            {% for c in origin_list %}
+            <option value="{{c}}" {% if sel_origin==c %}selected{% endif %}>{{c}}</option>
+            {% endfor %}
+        </select>
+
+        <label>
+            <span data-zh="钢铁铝及衍生品或汽车零部件：" data-en="steel/copper/aluminum or automobile parts:">钢铁铝及衍生品或汽车零部件：</span>
+            <span class="required-mark">*</span>
+        </label>
+        <select name="metal_flag">
+            <option value="" {% if metal_flag=="" %}selected{% endif %} data-zh="--请选择--" data-en="Please select">--请选择--</option>
+            <option value="是" {% if metal_flag=="是" %}selected{% endif %} data-zh="是" data-en="Yes">是</option>
+            <option value="否" {% if metal_flag=="否" %}selected{% endif %} data-zh="否" data-en="No">否</option>
+        </select>
+
+        <label data-zh="HS编码：" data-en="HS Code:">HS编码：</label>
+        <textarea id="hsTextarea" name="search_hs"
+        placeholder-zh="单行支持6/8/10位；多行批量仅支持完整10位HS，编码之间换行分隔"
+        placeholder-en="Single line support 6/8/10‑digit; multi‑line batch only support full 10‑digit HS, separate codes by new line">{{search_hs}}</textarea>
+
+        <button type="submit" class="btn-query" data-zh="查询" data-en="Search">查询</button>
+    </div>
+</form>
+
+{% if warn_msg %}
+<div style="background:#fff2cc;color:#994400;padding:12px 16px;border-radius:8px;margin:12px 0;">
+    {{warn_msg}}
+</div>
+{% endif %}
+
+{% if result %}
+<button class="btn-export" id="btnExport" data-zh="导出Excel" data-en="Export Excel">导出Excel</button>
+<table>
+    <thead>
+    <tr>
+        <th data-zh="HS CODE" data-en="HS CODE">HS CODE</th>
+        <th data-zh="商品描述" data-en="Description">商品描述</th>
+        <th data-zh="基础关税" data-en="Basic Duty">基础关税</th>
+        <th data-zh="对华301加征" data-en="Section301 Tariff">对华301加征</th>
+        <th data-zh="232加征" data-en="Section232 Tariff">232加征</th>
+        <th data-zh="强迫劳动加征" data-en="Forced-Labor Tariff">强迫劳动加征</th>
+        <th data-zh="综合关税" data-en="Total">综合关税</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in result %}
+    <tr>
+        <td>{{item.hs_code}}</td>
+        <td>{{item.product_desc}}</td>
+        <td>{{item.mfn_rate}}</td>
+        <td>{{item.tariff301}}</td>
+        <td>{{item.sec232}}</td>
+        <td>{{item.fl_text}}</td>
+        <td>
+        {% if item.composite_expr %}
+            <div>{{item.composite_expr}}</div>
+            {% if item.composite_total %}
+                <div class="total-text">Total：{{item.composite_total}}</div>
+            {% endif %}
+        {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<script>
+    let currentLang = "{{lang}}";
+    const btnZh = document.getElementById("btnZh");
+    const btnEn = document.getElementById("btnEn");
+
+    function applyLang(lang){
+        document.querySelectorAll("[data-zh]").forEach(el=>{
+            if(lang === "zh"){
+                el.innerText = el.getAttribute("data-zh");
+            }else{
+                el.innerText = el.getAttribute("data-en");
+            }
+        });
+        document.querySelectorAll("[placeholder-zh]").forEach(el=>{
+            if(lang === "zh"){
+                el.placeholder = el.getAttribute("placeholder-zh");
+            }else{
+                el.placeholder = el.getAttribute("placeholder-en");
+            }
+        });
+        if(lang === "zh"){
+            btnZh.classList.add("active");
+            btnEn.classList.remove("active");
+        }else{
+            btnEn.classList.add("active");
+            btnZh.classList.remove("active");
+        }
+        currentLang = lang;
+    }
+    applyLang(currentLang);
+
+    btnZh.onclick = ()=> {
+        const url = new URL(window.location);
+        url.searchParams.set('lang','zh');
+        window.location.href = url.toString();
+    };
+    btnEn.onclick = ()=> {
+        const url = new URL(window.location);
+        url.searchParams.set('lang','en');
+        window.location.href = url.toString();
+    };
+
+    {% if result %}
+    const btnExport = document.getElementById("btnExport");
+    btnExport.onclick = async ()=>{
+        try{
+            const resp = await fetch("/export_excel",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({lang:currentLang})
+            });
+            if(!resp.ok){
+                alert("导出失败，请重试");
+                return;
+            }
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            if(currentLang === "zh"){
+                a.download = "美国关税查询结果.xlsx";
+            }else{
+                a.download = "US_Tariff_Query_Result.xlsx";
+            }
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }catch(e){
+            console.error(e);
+            alert("导出异常，请重试");
+        }
+    }
+    {% endif %}
+</script>
+</body>
+</html>
