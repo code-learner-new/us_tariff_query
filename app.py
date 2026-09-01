@@ -14,7 +14,6 @@ ORIGIN_COUNTRY_LIST = ["China","Vietnam","Malaysia","Mexico","India","Indonesia"
 if not os.path.exists(DB):
     st.warning("数据库不存在，正在重建税则数据库，请稍候...")
     import init_db
-    init_db.main()
 
 # ===================== DB工具函数（原样复用） =====================
 def get_db_conn():
