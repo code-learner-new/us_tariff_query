@@ -1,7 +1,6 @@
 import sqlite3
 import csv
 import os
-import re   # ← 必须导入，用于税率清洗
 
 DB_FILE = r"./tariff.db"
 
@@ -23,14 +22,6 @@ def safe_int(val, default=0):
         return int(s)
     except ValueError:
         return default
-
-def clean_rate_text(val):
-    """清洗税率字段：只保留数字、小数点、百分号、减号，消除不可见脏字符"""
-    if val is None:
-        return "-"
-    raw = str(val)
-    cleaned = re.sub(r"[^0-9.%\-]", "", raw)
-    return cleaned if cleaned != "" else "-"
 
 def init_database():
     conn = sqlite3.connect(DB_FILE)
@@ -80,6 +71,7 @@ def init_database():
         applicable_origin TEXT
     )
     ''')
+
     log_messages = []
 
     # =========1、导入hts.csv=========
@@ -102,7 +94,7 @@ def init_database():
                     hs,
                     row.get("product_desc",""),
                     row.get("unit",""),
-                    clean_rate_text(row.get("general_rate")),
+                    row.get("general_rate",""),
                     row.get("applicable_origin","ALL")
                 ))
                 success_hts +=1
@@ -114,8 +106,8 @@ def init_database():
 
     # =========2、导入301_china.csv=========
     csv_301 = r"./data/301_china.csv"
-    success_301 = 0
-    skip_301 = 0
+    success_301 =0
+    skip_301=0
     try:
         with open(csv_301,"r",encoding="utf-8-sig",newline="") as f:
             reader = csv.DictReader(f)
@@ -125,14 +117,12 @@ def init_database():
                 if not hs:
                     skip_301 +=1
                     continue
-                # 【关键修复】301税率入库前清洗，消除csv脏字符（换行/零宽空格/前置0）
-                clean_rate = clean_rate_text(row.get("add_tariff_rate"))
                 cur.execute('''
                 INSERT INTO tariff_301(hs_code,add_tariff_rate,applicable_origin,is_exclusion,list_id,effective_date)
                 VALUES(?,?,?,?,?,?)
                 ''',(
                     hs,
-                    clean_rate,
+                    row.get("add_tariff_rate",""),
                     row.get("applicable_origin","China"),
                     safe_int(row.get("is_exclusion")),
                     row.get("list_id",""),
@@ -147,8 +137,8 @@ def init_database():
 
     # =========3、导入 Forcelabor_2607.csv=========
     csv_fl = r"./data/Forcelabor_2607.csv"
-    success_fl = 0
-    skip_fl = 0
+    success_fl =0
+    skip_fl=0
     try:
         with open(csv_fl,"r",encoding="utf-8-sig",newline="") as f:
             reader = csv.DictReader(f)
@@ -193,7 +183,7 @@ def init_database():
                 VALUES(?,?,?,?)
                 ''',(
                     hs,
-                    clean_rate_text(row.get("add_tariff_rate")),
+                    row.get("add_tariff_rate",""),
                     row.get("Type",""),
                     row.get("applicable_origin","ALL")
                 ))
