@@ -65,15 +65,18 @@ def get_section232_info(conn, product_hs_clean):
     return "-"
 
 def parse_rate_number(rate_str: str):
-    if not rate_str or rate_str == "-" or rate_str == "N/A":
+    if not rate_str or rate_str == "-" or rate_str == "N/A" or rate_str is None:
         return None
-    s = str(rate_str).strip().upper()
-    if "FREE" in s or "0.00%" in s:
+    s = str(rate_str).strip()
+    rate_strip = s.upper()
+    if "FREE" in rate_strip or "0.00%" in rate_strip:
         return 0.0
-    match = re.search(r"([\d\.]+)", s)
+    # 提取数字，允许前后空格
+    match = re.search(r"([0-9]+\.[0-9]+|[0-9]+)", s)
     if match:
         try:
-            return float(match.group(1))
+            val = float(match.group(1))
+            return val
         except ValueError:
             return None
     return None
