@@ -104,6 +104,14 @@ def init_database():
         log_messages.append(f"⚠️ hts.csv读取异常:{str(e)}")
     log_messages.append(f"hts导入完成：成功{success_hts}，跳过{skip_hts}")
 
+# 在读取301_china.csv循环内，对税率字段做清洗
+raw_rate = row.get("add_tariff_rate","")
+# 只保留数字、小数点、百分号
+clean_rate = re.sub(r"[^0-9.%\-]", "", str(raw_rate))
+if clean_rate == "":
+    clean_rate = "-"
+# 存入数据库使用 clean_rate，不要直接用row原始值
+    
     # =========2、导入301_china.csv=========
     csv_301 = r"./data/301_china.csv"
     success_301 =0
