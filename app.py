@@ -247,27 +247,35 @@ if st.button(ui_text["btn_search"]):
                         continue
                     rows_hts = conn.execute('''
                         SELECT * FROM hts
-                        WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') = ?
-                    ''', (search_hs_item,)).fetchall()
-                else:
-                    if len(search_hs_item) >= 8:
-                        query_prefix = search_hs_item[:8] + "%"
-                    else:
-                        query_prefix = search_hs_item + "%"
-                    rows_hts = conn.execute('''
-                        SELECT * FROM hts
-                        WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') LIKE ?
-                        ORDER BY hs_code
-                    ''', (query_prefix,)).fetchall()
-                if len(rows_hts) ==0:
-                    continue
-                for hts_row in rows_hts:
-                    hs = hts_row["hs_code"]
-                    desc = hts_row["product_desc"]
-                    hs_clean = hs.replace(".", "").replace("-","")
-                    base_rate = get_8digit_tariff(conn, hs_clean)
-                    rate_301 = None
-                    if sel_origin == "China":
+# ✅ 先在Python层清洗输入的HS，复用已有的clean_hs函数，不要在SQL里做replace
+search_hs_clean = init_db.clean_hs(search_hs_item)
+
+if len(search_hs_clean) == 10:
+    rows_hts = conn.execute('''
+        SELECT * FROM hts
+        WHERE hs_code = ?
+    ''', (search_hs_clean,)).fetchall()
+else:
+    if len(search_hs_clean) >= 8:
+        query_prefix = search_hs_clean[:8] + "%"
+    else:
+        query_prefix = search_hs_clean + "%"
+    rows_hts = conn.execute('''
+        SELECT * FROM hts
+        WHERE hs_code LIKE ?
+        ORDER BY hs_code
+    ''', (query_prefix,)).fetchall()
+
+if len(rows_hts) ==0:
+    continue
+for hts_row in rows_hts:
+    hs = hts_row["hs_code"]
+    desc = hts_row["product_desc"]
+    # ✅ 库内hs已经是纯数字，直接赋值，不再重复replace
+    hs_clean = hs
+    base_rate = get_8digit_tariff(conn, hs_clean)
+    rate_301 = None
+    if sel_origin == "China":
                         r301 = conn.execute('''
                             SELECT add_tariff_rate
                             FROM tariff_301
