@@ -5,27 +5,22 @@ from openpyxl import Workbook
 from io import BytesIO
 import os
 import sys
-
 # ===================== 配置 =====================
 DB = r"./tariff.db"
 ORIGIN_COUNTRY_LIST = ["China","Vietnam","Malaysia","Mexico","India","Indonesia","Thailand"]
-
 # 数据库不存在则自动运行init_db重建（解决Streamlit容器重启丢失db）
 if not os.path.exists(DB):
     st.warning("数据库不存在，正在重建税则数据库，请稍候...")
     import init_db
-
 # ===================== DB工具函数（原样复用） =====================
 def get_db_conn():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
-
 def clean_input_hs(s):
     if not s:
         return ""
     return "".join([c for c in str(s) if c.isdigit()])
-
 def get_8digit_tariff(conn, full_clean_hs):
     """逐级截断：10→8→6，优先最长匹配父节点general_rate"""
     candidates = []
@@ -47,7 +42,6 @@ def get_8digit_tariff(conn, full_clean_hs):
                 return "0.00%"
             return raw_rate
     return "N/A"
-
 def get_section232_info(conn, product_hs_clean):
     rows_232 = conn.execute('''
         SELECT hs_code, add_tariff_rate, type FROM tariff_232
@@ -62,8 +56,6 @@ def get_section232_info(conn, product_hs_clean):
             typ = r["type"]
             return f"{rate} | {typ}"
     return "-"
-
-import re
 
 def parse_rate_number(rate_str: str):
     if not rate_str or rate_str == "-" or rate_str == "N/A" or rate_str is None:
@@ -113,11 +105,9 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     expr_parts = []
     num_list = []
     use_232 = False
-
     b_num = parse_rate_number(base)
     t301_num = parse_rate_number(t301)
     fl_num = parse_rate_number(fl_text)
-
     sec232_rate = None
     sec232_type = ""
     sec232_num = None
@@ -126,57 +116,48 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     if s232 != "-" and s232 != "":
         sec232_rate, sec232_type = s232.split(" | ",1)
         sec232_num = parse_rate_number(sec232_rate)
-
     cond1 = False
     if metal_flag.strip() == "是" and s232 != "-" and s232 != "":
         t = sec232_type.upper()
         if "STEEL" in t or "COPPER" in t or "ALUMINUM" in t or "AUTOMOBILE" in t:
             cond1 = True
-
     if cond1:
         use_232 = True
         expr_parts.append(base)
         if b_num is None:
             return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(b_num)
-
         if t301.strip() != "-":
             expr_parts.append(t301)
             if t301_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(t301_num)
-
         expr_parts.append(sec232_rate)
         if sec232_num is None:
             return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(sec232_num)
-
         fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
         if fl_text not in fl_skip_set:
             expr_parts.append(fl_text)
             if fl_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(fl_num)
-
     else:
         expr_parts.append(base)
         if b_num is None:
             return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
         num_list.append(b_num)
-
         if t301.strip() != "-":
             expr_parts.append(t301)
             if t301_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(t301_num)
-
         fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
         if fl_text not in fl_skip_set:
             expr_parts.append(fl_text)
             if fl_num is None:
                 return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
             num_list.append(fl_num)
-
     expr_str = " + ".join(expr_parts)
     if len(num_list) > 0:
         total_val = sum(num_list)
@@ -213,10 +194,8 @@ def generate_excel(rows, lang="zh") -> bytes:
 # ===================== Streamlit页面主体，替换Flask index路由 =====================
 st.set_page_config(page_title="US关税查询工具", layout="wide")
 st.title("美国综合关税查询工具")
-
 # 语言切换
 lang = st.radio("Language / 语言", ["zh","en"], horizontal=True)
-
 # UI文本
 ui_text = {
     "zh":{
@@ -240,15 +219,12 @@ ui_text = {
         "btn_export":"Export Excel"
     }
 }[lang]
-
 # 表单控件
 sel_origin = st.selectbox(ui_text["origin_label"], ORIGIN_COUNTRY_LIST, index=0)
 search_hs = st.text_area(ui_text["hs_input_label"], height=120)
 metal_flag = st.radio(ui_text["metal_label"], ["是","否"], horizontal=True)
-
 warn_msg = ""
 result_data = st.session_state.get("query_result", [])
-
 if st.button(ui_text["btn_search"]):
     if not metal_flag:
         warn_msg = ui_text["warn_metal"]
@@ -311,6 +287,11 @@ if st.button(ui_text["btn_search"]):
                         fl_rate_text_raw = fl_row["country_rate_text"]
                         fl_excl = fl_row["is_exclusion"]
                     fl_display_text = parse_forced_labor_rate(fl_rate_text_raw, sel_origin, fl_excl, lang)
+
+                    # 【修复】如果启用232关税，先修改fl文本，再传入函数计算
+                    if metal_flag.strip() == "是" and sec232_text.strip() != "-":
+                        fl_display_text = "0（豁免清单内）"
+
                     composite_result = calc_composite_tariff(
                         base=base_rate,
                         t301=rate_301 if rate_301 else "-",
@@ -318,8 +299,7 @@ if st.button(ui_text["btn_search"]):
                         sec232_full=sec232_text,
                         metal_flag=metal_flag
                     )
-                    if composite_result["use_232"]:
-                        fl_display_text = "0"
+
                     if is_batch_mode:
                         disp_mfn = base_rate
                         disp_301 = rate_301 if rate_301 else "-"
@@ -359,11 +339,9 @@ if st.button(ui_text["btn_search"]):
                 warn_msg = ui_text["warn_no_result"]
     # 存入st.session_state，替代Flask session
     st.session_state["query_result"] = result_data
-
 # 提示信息
 if warn_msg:
     st.error(warn_msg)
-
 # 展示查询结果表格
 result_data = st.session_state.get("query_result", [])
 if result_data:
@@ -376,5 +354,4 @@ if result_data:
         file_name="US_Tariff_Query.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 st.info("⚠️本工具仅供公开参考，报关请以美国海关官方数据为准。")
