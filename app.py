@@ -106,45 +106,61 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     expr_parts = []
     num_list = []
     use_232 = False
+
     b_num = parse_rate_number(base)
     t301_num = parse_rate_number(t301)
+    fl_num = parse_rate_number(fl_text)
+
     sec232_rate = None
     sec232_type = ""
     if sec232_full != "-":
         sec232_rate, sec232_type = sec232_full.split(" | ",1)
+    sec232_num = parse_rate_number(sec232_rate) if sec232_rate else None
+
     cond1 = False
     if metal_flag == "是" and sec232_full != "-":
         t = sec232_type.upper()
         if "STEEL" in t or "COPPER" in t or "ALUMINUM" in t or "AUTOMOBILE" in t:
             cond1 = True
+
     if cond1:
         use_232 = True
         expr_parts.append(base)
-        if b_num is not None:
-            num_list.append(b_num)
+        if b_num is None:
+            return {"expr":" | ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+        num_list.append(b_num)
+
         if t301 != "-":
             expr_parts.append(t301)
-            if t301_num is not None:
-                num_list.append(t301_num)
+            if t301_num is None:
+                return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+            num_list.append(t301_num)
+
         expr_parts.append(sec232_rate)
-        s232_num = parse_rate_number(sec232_rate)
-        if s232_num is not None:
-            num_list.append(s232_num)
+        if sec232_num is None:
+            return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+        num_list.append(sec232_num)
+
     else:
         expr_parts.append(base)
-        if b_num is not None:
-            num_list.append(b_num)
+        if b_num is None:
+            return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+        num_list.append(b_num)
+
         if t301 != "-":
             expr_parts.append(t301)
-            if t301_num is not None:
-                num_list.append(t301_num)
+            if t301_num is None:
+                return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+            num_list.append(t301_num)
+
         fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
         fl_effective = fl_text not in fl_skip_set
         if fl_effective:
             expr_parts.append(fl_text)
-            fl_num = parse_rate_number(fl_text)
-            if fl_num is not None:
-                num_list.append(fl_num)
+            if fl_num is None:
+                return {"expr":" + ".join(expr_parts),"total":"(解析失败)","use_232":use_232}
+            num_list.append(fl_num)
+
     expr_str = " + ".join(expr_parts)
     if len(num_list) >0:
         total_val = sum(num_list)
@@ -152,6 +168,7 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     else:
         total_str = "(无法计算)"
     return {"expr": expr_str, "total": total_str, "use_232": use_232}
+
 
 # ===================== Excel导出函数（修改为返回二进制字节流） =====================
 def generate_excel(rows, lang="zh") -> bytes:
