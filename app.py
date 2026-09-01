@@ -186,17 +186,6 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
         total_str = "(无法计算)"
     return {"expr": expr_str, "total": total_str, "use_232": use_232}
 
-
-# 单元测试
-if __name__ == "__main__":
-    # 模拟301税率50%，带脏字符
-    print(parse_rate_number("50.00%"))
-    res = calc_composite_tariff("7.00%","50.00%","12.5%","-","否")
-    print(res)
-    # 测试100% 301税率
-    res2 = calc_composite_tariff("7.00%","100.00%","12.5%","-","否")
-    print(res2)
-
 # ===================== Excel导出函数（修改为返回二进制字节流） =====================
 def generate_excel(rows, lang="zh") -> bytes:
     wb = Workbook()
