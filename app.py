@@ -167,9 +167,9 @@ def generate_excel(rows, lang="zh") -> bytes:
             r.get("hs_code",""),
             r.get("product_desc",""),
             r.get("mfn_rate",""),
-            r.get("tariff301",""),
+            r.get("tariff301_CN",""),
             r.get("sec232",""),
-            r.get("fl_text",""),
+            r.get("tariff301_forcedlabor",""),
             r.get("composite_expr",""),
             r.get("composite_total","")
         ])
@@ -315,9 +315,9 @@ if st.button(ui_text["btn_search"]):
                         "hs_code": hs,
                         "product_desc": desc,
                         "mfn_rate": disp_mfn,
-                        "tariff301": disp_301,
+                        "tariff301_CN": disp_301,
                         "sec232": disp_232,
-                        "fl_text": disp_fl,
+                        "tariff301_forcedlabor": disp_fl,
                         "composite_expr": disp_expr,
                         "composite_total": disp_total
                     }
