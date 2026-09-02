@@ -68,9 +68,9 @@ def parse_rate_number(rate_str: str):
     if not rate_str or rate_str == "-" or rate_str == "N/A":
         return None
     s = str(rate_str).strip().upper()
-    if "FREE" in s or "0.00%" in s:
+    if "FREE" in s:                    # ← 去掉 or "0.00%" in s
         return 0.0
-    match = re.search(r"([\d\.]+)", s)
+    match = re.search(r"(\d+(?:\.\d+)?)", s)   # ← 正则收紧，避免匹配到游离小数点
     if match:
         try:
             return float(match.group(1))
