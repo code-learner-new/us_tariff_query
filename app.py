@@ -129,8 +129,8 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
             cond_trigger_232_add = True
             cond_use_232_flag = True
         elif any(x in t for x in ["STEEL","COPPER","ALUMINUM"]):
-            # 钢/铜/铝：需要UI标记=是；打开use_232屏蔽强迫劳动
-            if metal_flag == "是":
+            # 钢/铜/铝：需要UI标记=Yes；打开use_232屏蔽强迫劳动
+            if metal_flag == "Yes":
                 cond_trigger_232_add = True
                 cond_use_232_flag = True
             else:
@@ -386,4 +386,4 @@ if result_data:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-st.info("⚠️本工具仅供公开参考，报关请以美国海关官方数据为准。关税叠加说明：铜/铁/铝及其衍生品以及汽车及零部件下的232关税与强迫劳动加征不叠加")
+st.info("⚠️本工具仅供公开参考，报关请以美国海关官方数据为准。关税叠加说明：铜/铁/铝及其衍生品以及汽车及零部件下的232关税与强迫劳动加征不叠加；UAS（无人机）带*有适用条件，请参考公告确认")
