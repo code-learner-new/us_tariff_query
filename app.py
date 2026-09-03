@@ -214,8 +214,8 @@ ui_text = {
     "zh":{
         "origin_label":"选择原产国",
         "hs_input_label":"输入HS编码（支持单行，多行批量仅支持10位）",
-        "metal_label":"是否包含钢铁/铝/铜/汽车零部件",
-        "warn_metal":"请选择【钢铁铝及衍生品/汽车零部件】，此项为必填",
+        "metal_label":"是否包含钢铁/铝/铜",
+        "warn_metal":"请选择【钢铁铝及衍生品】，此项为必填",
         "warn_input":"请输入HS编码，单行支持6/8/10位；多行批量仅支持10位HS编码。",
         "warn_no_result":"输入HS编码未在HTS数据库找到，请核对编码。",
         "btn_search":"开始查询",
@@ -224,8 +224,8 @@ ui_text = {
     "en":{
         "origin_label":"Select Origin Country",
         "hs_input_label":"Input HS code(s). Single search support 6/8/10-digit; batch multiple lines only support 10-digit HS.",
-        "metal_label":"Contains Steel / Aluminum / Copper / Automobile parts?",
-        "warn_metal":"Please select whether contains steel‑aluminum‑copper-autoparts (Yes / No)",
+        "metal_label":"Contains Steel / Aluminum / Copper?",
+        "warn_metal":"Please select whether contains steel‑aluminum‑copper (Yes / No)",
         "warn_input":"Please input HS code(s). Single search support 6/8/10‑digit; batch multiple lines only support 10‑digit HS.",
         "warn_no_result":"HS code not found in HTS database, please check your input.",
         "btn_search":"Search",
