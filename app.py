@@ -110,39 +110,35 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     t301_num = parse_rate_number(t301)
     sec232_rate = None
     sec232_type = ""
-    sec232_effective = False  # 标记232税率是否需要加入计算（UAS也会置True，但use_232=False）
+    sec232_effective = False  #标记232税率是否加入计算(UAS也置True，但use_232=False)
 
     if sec232_full != "-":
         sec232_rate, sec232_type = sec232_full.split(" | ",1)
 
-    # ========== 新版232条件逻辑 ==========
+    # ========== 更新后的232条件逻辑 ==========
     cond_trigger_232_add = False
     cond_use_232_flag = False
     if sec232_full != "-":
         t = sec232_type.upper()
         if "UAS" in t:
-            # UAS：叠加232税率，但不打开use_232，强迫劳动照常参与
+            # UAS：叠加232税率，不打开use_232，强迫劳动照常叠加
             cond_trigger_232_add = True
             cond_use_232_flag = False
-        elif "AUTOMOBILE" in t:
-            # Automobile：命中即叠加232，打开use_232，屏蔽强迫劳动
-            cond_trigger_232_add = True
-            cond_use_232_flag = True
-        elif any(x in t for x in ["STEEL","COPPER","ALUMINUM"]):
-            # 钢/铜/铝：需要UI标记=Yes；打开use_232屏蔽强迫劳动
-            if metal_flag == "Yes":
+        elif any(x in t for x in ["STEEL","COPPER","ALUMINUM","AUTOMOBILE"]):
+            # STEEL / COPPER / ALUMINUM / AUTOMOBILE：需要UI金属标记=是
+            if metal_flag == "是":
                 cond_trigger_232_add = True
                 cond_use_232_flag = True
             else:
                 cond_trigger_232_add = False
                 cond_use_232_flag = False
         else:
-            # 其它type，默认不叠加232
+            #其它type，不叠加232
             cond_trigger_232_add = False
             cond_use_232_flag = False
 
     use_232 = cond_use_232_flag
-    # ====================================
+    # ========================================
 
     expr_parts.append(base)
     if b_num is not None:
@@ -153,14 +149,14 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
         if t301_num is not None:
             num_list.append(t301_num)
 
-    # 如果需要叠加232税率（含UAS场景）
+    # 需要叠加232税率（包含UAS场景）
     if cond_trigger_232_add:
         expr_parts.append(sec232_rate)
         s232_num = parse_rate_number(sec232_rate)
         if s232_num is not None:
             num_list.append(s232_num)
 
-    # 强迫劳动关税处理：use_232=False时才允许加入（UAS走这里；STEEL/AUTO use_232=True不进）
+    # 强迫劳动关税：use_232=False才允许叠加
     fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
     fl_effective = fl_text not in fl_skip_set
     if not use_232 and fl_effective:
@@ -214,7 +210,7 @@ ui_text = {
     "zh":{
         "origin_label":"选择原产国",
         "hs_input_label":"输入6位/8位/10位美国HTS编码（支持单行，多行批量仅支持10位）",
-        "metal_label":"是否包含钢铁/铝/铜",
+        "metal_label":"是否包含钢铁/铝/铜或为汽车及其零部件",
         "warn_metal":"请选择【钢铁铝及衍生品】，此项为必填",
         "warn_input":"请输入HS编码，单行支持6/8/10位；多行批量仅支持10位HS编码。",
         "warn_no_result":"输入HS编码未在HTS数据库找到，请核对编码。",
@@ -224,7 +220,7 @@ ui_text = {
     "en":{
         "origin_label":"Select Origin Country",
         "hs_input_label":"Input HS code(s). Single search support 6/8/10-digit; batch multiple lines only support 10-digit HS.",
-        "metal_label":"Contains Steel / Aluminum / Copper?",
+        "metal_label":"Contains Steel / Aluminum / Copper / Auto / Auto Parts?",
         "warn_metal":"Please select whether contains steel‑aluminum‑copper (Yes / No)",
         "warn_input":"Please input HS code(s). Single search support 6/8/10‑digit; batch multiple lines only support 10‑digit HS.",
         "warn_no_result":"HS code not found in HTS database, please check your input.",
