@@ -236,7 +236,7 @@ ui_text = {
 # 表单控件
 sel_origin = st.selectbox(ui_text["origin_label"], ORIGIN_COUNTRY_LIST, index=0)
 search_hs = st.text_area(ui_text["hs_input_label"], height=120)
-metal_flag = st.radio(ui_text["metal_label"], ["是","否"], horizontal=True)
+metal_flag = st.radio(ui_text["metal_label"], ["Yes","No"], horizontal=True)
 
 warn_msg = ""
 result_data = st.session_state.get("query_result", [])
