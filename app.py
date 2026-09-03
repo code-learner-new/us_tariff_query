@@ -254,9 +254,6 @@ if st.button(ui_text["btn_search"]):
         if len(hs_batch_raw) == 0:
             warn_msg = ui_text["warn_input"]
         else:
-            conn = get_db_conn()
-            is_batch_mode = len(hs_batch_raw) > 1
-            result_data = []
             for search_hs_item in hs_batch_raw:
                 if is_batch_mode:
                     if len(search_hs_item) != 10:
@@ -266,15 +263,32 @@ if st.button(ui_text["btn_search"]):
                         WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') = ?
                     ''', (search_hs_item,)).fetchall()
                 else:
-                    if len(search_hs_item) >= 8:
-                        query_prefix = search_hs_item[:8] + "%"
+                    clean_search = search_hs_item
+                    if len(clean_search) == 10:
+                        # 输入10位：仅精确匹配10位，不带上层
+                        rows_hts = conn.execute('''
+                            SELECT * FROM hts
+                            WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') = ?
+                            ORDER BY hs_code
+                        ''', (clean_search,)).fetchall()
+                    elif len(clean_search) == 8:
+                        # 输入8位：8位及其下属10位
+                        query_prefix = clean_search + "%"
+                        rows_hts = conn.execute('''
+                            SELECT * FROM hts
+                            WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') LIKE ?
+                            ORDER BY hs_code
+                        ''', (query_prefix,)).fetchall()
+                    elif len(clean_search) == 6:
+                        # 输入6位：6位及其下属8、10位
+                        query_prefix = clean_search + "%"
+                        rows_hts = conn.execute('''
+                            SELECT * FROM hts
+                            WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') LIKE ?
+                            ORDER BY hs_code
+                        ''', (query_prefix,)).fetchall()
                     else:
-                        query_prefix = search_hs_item + "%"
-                    rows_hts = conn.execute('''
-                        SELECT * FROM hts
-                        WHERE REPLACE(REPLACE(hs_code, '.',''),'-','') LIKE ?
-                        ORDER BY hs_code
-                    ''', (query_prefix,)).fetchall()
+                        rows_hts = []
                 if len(rows_hts) ==0:
                     continue
                 for hts_row in rows_hts:
