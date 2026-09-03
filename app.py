@@ -213,7 +213,7 @@ lang = st.radio("Language / 语言", ["zh","en"], horizontal=True)
 ui_text = {
     "zh":{
         "origin_label":"选择原产国",
-        "hs_input_label":"输入HS编码（支持单行，多行批量仅支持10位）",
+        "hs_input_label":"输入6位/8位/10位美国HTS编码（支持单行，多行批量仅支持10位）",
         "metal_label":"是否包含钢铁/铝/铜",
         "warn_metal":"请选择【钢铁铝及衍生品】，此项为必填",
         "warn_input":"请输入HS编码，单行支持6/8/10位；多行批量仅支持10位HS编码。",
@@ -386,4 +386,4 @@ if result_data:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-st.info("⚠️本工具仅供公开参考，报关请以美国海关官方数据为准。")
+st.info("⚠️本工具仅供公开参考，报关请以美国海关官方数据为准。关税叠加说明：铜/铁/铝及其衍生品以及汽车及零部件下的232关税与强迫劳动加征不叠加")
