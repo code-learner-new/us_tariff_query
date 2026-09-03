@@ -110,43 +110,67 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     t301_num = parse_rate_number(t301)
     sec232_rate = None
     sec232_type = ""
+    sec232_effective = False  # 标记232税率是否需要加入计算（UAS也会置True，但use_232=False）
+
     if sec232_full != "-":
         sec232_rate, sec232_type = sec232_full.split(" | ",1)
-    cond1 = False
-    if metal_flag == "是" and sec232_full != "-":
+
+    # ========== 新版232条件逻辑 ==========
+    cond_trigger_232_add = False
+    cond_use_232_flag = False
+    if sec232_full != "-":
         t = sec232_type.upper()
-        if "STEEL" in t or "COPPER" in t or "ALUMINUM" in t or "AUTOMOBILE" in t:
-            cond1 = True
-    if cond1:
-        use_232 = True
-        expr_parts.append(base)
-        if b_num is not None:
-            num_list.append(b_num)
-        if t301 != "-":
-            expr_parts.append(t301)
-            if t301_num is not None:
-                num_list.append(t301_num)
+        if "UAS" in t:
+            # UAS：叠加232税率，但不打开use_232，强迫劳动照常参与
+            cond_trigger_232_add = True
+            cond_use_232_flag = False
+        elif "AUTOMOBILE" in t:
+            # Automobile：命中即叠加232，打开use_232，屏蔽强迫劳动
+            cond_trigger_232_add = True
+            cond_use_232_flag = True
+        elif any(x in t for x in ["STEEL","COPPER","ALUMINUM"]):
+            # 钢/铜/铝：需要UI标记=是；打开use_232屏蔽强迫劳动
+            if metal_flag == "是":
+                cond_trigger_232_add = True
+                cond_use_232_flag = True
+            else:
+                cond_trigger_232_add = False
+                cond_use_232_flag = False
+        else:
+            # 其它type，默认不叠加232
+            cond_trigger_232_add = False
+            cond_use_232_flag = False
+
+    use_232 = cond_use_232_flag
+    # ====================================
+
+    expr_parts.append(base)
+    if b_num is not None:
+        num_list.append(b_num)
+
+    if t301 != "-":
+        expr_parts.append(t301)
+        if t301_num is not None:
+            num_list.append(t301_num)
+
+    # 如果需要叠加232税率（含UAS场景）
+    if cond_trigger_232_add:
         expr_parts.append(sec232_rate)
         s232_num = parse_rate_number(sec232_rate)
         if s232_num is not None:
             num_list.append(s232_num)
-    else:
-        expr_parts.append(base)
-        if b_num is not None:
-            num_list.append(b_num)
-        if t301 != "-":
-            expr_parts.append(t301)
-            if t301_num is not None:
-                num_list.append(t301_num)
-        fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
-        fl_effective = fl_text not in fl_skip_set
-        if fl_effective:
-            expr_parts.append(fl_text)
-            fl_num = parse_rate_number(fl_text)
-            if fl_num is not None:
-                num_list.append(fl_num)
+
+    # 强迫劳动关税处理：use_232=False时才允许加入（UAS走这里；STEEL/AUTO use_232=True不进）
+    fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
+    fl_effective = fl_text not in fl_skip_set
+    if not use_232 and fl_effective:
+        expr_parts.append(fl_text)
+        fl_num = parse_rate_number(fl_text)
+        if fl_num is not None:
+            num_list.append(fl_num)
+
     expr_str = " + ".join(expr_parts)
-    if len(num_list) >0:
+    if len(num_list) > 0:
         total_val = sum(num_list)
         total_str = f"{total_val:.2f}%"
     else:
