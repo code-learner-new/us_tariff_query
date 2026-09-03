@@ -254,6 +254,9 @@ if st.button(ui_text["btn_search"]):
         if len(hs_batch_raw) == 0:
             warn_msg = ui_text["warn_input"]
         else:
+            conn = get_db_conn()
+            is_batch_mode = len(hs_batch_raw) > 1   # ⚠️这一行不能丢！在for循环外面
+            result_data = []
             for search_hs_item in hs_batch_raw:
                 if is_batch_mode:
                     if len(search_hs_item) != 10:
