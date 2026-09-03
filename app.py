@@ -125,8 +125,8 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
             cond_trigger_232_add = True
             cond_use_232_flag = False
         elif any(x in t for x in ["STEEL","COPPER","ALUMINUM","AUTOMOBILE"]):
-            # STEEL / COPPER / ALUMINUM / AUTOMOBILE：需要UI金属标记=是
-            if metal_flag == "是":
+            # STEEL / COPPER / ALUMINUM / AUTOMOBILE：需要UI金属标记=Yes
+            if metal_flag == "Yes":
                 cond_trigger_232_add = True
                 cond_use_232_flag = True
             else:
@@ -221,7 +221,7 @@ ui_text = {
         "origin_label":"Select Origin Country",
         "hs_input_label":"Input HS code(s). Single search support 6/8/10-digit; batch multiple lines only support 10-digit HS.",
         "metal_label":"Contains Steel / Aluminum / Copper / Auto / Auto Parts?",
-        "warn_metal":"Please select whether contains steel‑aluminum‑copper (Yes / No)",
+        "warn_metal":"Please select whether contains steel‑aluminum‑copper-Auto/parts (Yes / No)",
         "warn_input":"Please input HS code(s). Single search support 6/8/10‑digit; batch multiple lines only support 10‑digit HS.",
         "warn_no_result":"HS code not found in HTS database, please check your input.",
         "btn_search":"Search",
