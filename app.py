@@ -110,10 +110,13 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     t301_num = parse_rate_number(t301)
     sec232_rate = None
     sec232_type = ""
-    sec232_effective = False
+    sec232_raw_num = None
+    sec232_effective_num = None
+    sec232_effective_str = ""
 
     if sec232_full != "-":
         sec232_rate, sec232_type = sec232_full.split(" | ",1)
+        sec232_raw_num = parse_rate_number(sec232_rate)
 
     # ========== 232触发条件（原有逻辑不变） ==========
     cond_trigger_232_add = False
@@ -140,36 +143,37 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     use_232 = cond_use_232_flag
     # ========================================
 
-    base_301_232_nums = []
     expr_main_parts = []
-    expr_main_parts.append(base)
+    sum_main = 0.0
     if b_num is not None:
-        base_301_232_nums.append(b_num)
+        expr_main_parts.append(base)
+        sum_main += b_num
 
     if t301 != "-":
         expr_main_parts.append(t301)
         if t301_num is not None:
-            base_301_232_nums.append(t301_num)
+            sum_main += t301_num
 
     if cond_trigger_232_add:
-        expr_main_parts.append(sec232_rate)
-        s232_num = parse_rate_number(sec232_rate)
-        if s232_num is not None:
-            base_301_232_nums.append(s232_num)
+        if sec232_raw_num is not None and b_num is not None:
+            if is_tem:
+                cap_val = sec232_raw_num
+                max_available_232 = max(0.0, cap_val - b_num)
+                sec232_effective_num = max_available_232
+                sec232_effective_str = f"({cap_val}%-{base})"
+            else:
+                sec232_effective_num = sec232_raw_num
+                sec232_effective_str = sec232_rate
+            expr_main_parts.append(sec232_effective_str)
+            sum_main += sec232_effective_num
+        elif sec232_raw_num is not None and not is_tem:
+            # base解析失败、非TEM场景，直接使用原始232
+            sec232_effective_num = sec232_raw_num
+            sec232_effective_str = sec232_rate
+            expr_main_parts.append(sec232_effective_str)
+            sum_main += sec232_effective_num
 
-    # --- TEM封顶逻辑：base+301+232 上限15% ---
-    main_sum = sum(base_301_232_nums) if base_301_232_nums else None
-    if is_tem and main_sum is not None:
-        capped_main = min(main_sum, 15.0)
-        if main_sum > 15.0:
-            expr_str_main = f"min({' + '.join(expr_main_parts)}, 15%)"
-        else:
-            expr_str_main = " + ".join(expr_main_parts)
-    else:
-        capped_main = main_sum
-        expr_str_main = " + ".join(expr_main_parts)
-
-    # --- 强迫劳动部分（不受TEM封顶，独立叠加） ---
+    # --- 强迫劳动部分（独立，不受TEM封顶，use_232控制是否叠加） ---
     fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
     fl_effective = fl_text not in fl_skip_set
     fl_num = parse_rate_number(fl_text)
@@ -181,18 +185,13 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
             fl_part_val = fl_num
 
     # 拼接最终表达式
-    expr_parts_final = [expr_str_main]
+    expr_parts_final = expr_main_parts.copy()
     if fl_part_expr:
         expr_parts_final.append(fl_part_expr)
     expr_str = " + ".join(expr_parts_final)
 
-    # 合计数值
-    if capped_main is not None:
-        total_val = capped_main + fl_part_val
-        total_str = f"{total_val:.2f}%"
-    else:
-        total_val = None
-        total_str = "(无法计算)"
+    total_val = sum_main + fl_part_val
+    total_str = f"{total_val:.2f}%"
 
     return {"expr": expr_str, "total": total_str, "use_232": use_232}
 
