@@ -110,22 +110,23 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
     t301_num = parse_rate_number(t301)
     sec232_rate = None
     sec232_type = ""
-    sec232_effective = False  #标记232税率是否加入计算(UAS也置True，但use_232=False)
+    sec232_effective = False
 
     if sec232_full != "-":
         sec232_rate, sec232_type = sec232_full.split(" | ",1)
 
-    # ========== 更新后的232条件逻辑 ==========
+    # ========== 232触发条件（原有逻辑不变） ==========
     cond_trigger_232_add = False
     cond_use_232_flag = False
+    is_tem = False
     if sec232_full != "-":
         t = sec232_type.upper()
+        if "TEM" in t:
+            is_tem = True
         if "UAS" in t:
-            # UAS：叠加232税率，不打开use_232，强迫劳动照常叠加
             cond_trigger_232_add = True
             cond_use_232_flag = False
         elif any(x in t for x in ["STEEL","COPPER","ALUMINUM","AUTOMOBILE"]):
-            # STEEL / COPPER / ALUMINUM / AUTOMOBILE：需要UI金属标记=Yes
             if metal_flag == "Yes":
                 cond_trigger_232_add = True
                 cond_use_232_flag = True
@@ -133,44 +134,66 @@ def calc_composite_tariff(base: str, t301: str, fl_text: str, sec232_full: str, 
                 cond_trigger_232_add = False
                 cond_use_232_flag = False
         else:
-            #其它type，不叠加232
             cond_trigger_232_add = False
             cond_use_232_flag = False
 
     use_232 = cond_use_232_flag
     # ========================================
 
-    expr_parts.append(base)
+    base_301_232_nums = []
+    expr_main_parts = []
+    expr_main_parts.append(base)
     if b_num is not None:
-        num_list.append(b_num)
+        base_301_232_nums.append(b_num)
 
     if t301 != "-":
-        expr_parts.append(t301)
+        expr_main_parts.append(t301)
         if t301_num is not None:
-            num_list.append(t301_num)
+            base_301_232_nums.append(t301_num)
 
-    # 需要叠加232税率（包含UAS场景）
     if cond_trigger_232_add:
-        expr_parts.append(sec232_rate)
+        expr_main_parts.append(sec232_rate)
         s232_num = parse_rate_number(sec232_rate)
         if s232_num is not None:
-            num_list.append(s232_num)
+            base_301_232_nums.append(s232_num)
 
-    # 强迫劳动关税：use_232=False才允许叠加
+    # --- TEM封顶逻辑：base+301+232 上限15% ---
+    main_sum = sum(base_301_232_nums) if base_301_232_nums else None
+    if is_tem and main_sum is not None:
+        capped_main = min(main_sum, 15.0)
+        if main_sum > 15.0:
+            expr_str_main = f"min({' + '.join(expr_main_parts)}, 15%)"
+        else:
+            expr_str_main = " + ".join(expr_main_parts)
+    else:
+        capped_main = main_sum
+        expr_str_main = " + ".join(expr_main_parts)
+
+    # --- 强迫劳动部分（不受TEM封顶，独立叠加） ---
     fl_skip_set = {"不在清单", "Not in list", "0（豁免清单内）", "0 (Exempted)"}
     fl_effective = fl_text not in fl_skip_set
+    fl_num = parse_rate_number(fl_text)
+    fl_part_expr = ""
+    fl_part_val = 0.0
     if not use_232 and fl_effective:
-        expr_parts.append(fl_text)
-        fl_num = parse_rate_number(fl_text)
+        fl_part_expr = fl_text
         if fl_num is not None:
-            num_list.append(fl_num)
+            fl_part_val = fl_num
 
-    expr_str = " + ".join(expr_parts)
-    if len(num_list) > 0:
-        total_val = sum(num_list)
+    # 拼接最终表达式
+    expr_parts_final = [expr_str_main]
+    if fl_part_expr:
+        expr_parts_final.append(fl_part_expr)
+    expr_str = " + ".join(expr_parts_final)
+
+    # 合计数值
+    if capped_main is not None:
+        total_val = capped_main + fl_part_val
         total_str = f"{total_val:.2f}%"
     else:
+        total_val = None
         total_str = "(无法计算)"
+
     return {"expr": expr_str, "total": total_str, "use_232": use_232}
 
 # ===================== Excel导出函数（修改为返回二进制字节流） =====================
